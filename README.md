@@ -37,13 +37,37 @@ Ex,
 apt_id : 111515
 area : 7
 
-max는 현재 호가 중 최대가
-min은 현재 호가 중 최저가
-distribution은 호가 가격 전부
+3개의 Entity가 추가되며, min,max의 attributes는 아래와 같이 추가됨.
+**ArticleName**
+헬리오시티
+**FloorInfo**
+저/23
+**DealOrWarrantPrc**
+18억 9,000
+**AreaName**
+84A
+**Direction**
+남향
+**ArticleConfirmYmd**
+20250114
+**ArticleFeatureDesc**
+입주협의 로얄타입 내부풀옵션 매물
+**TagList**
+10년이내, 대단지, 방세개, 화장실두개
+**BuildingName**
+214동
+**CpName**
+선방
+**CpPcArticleUrl**
+http://homesdid.co.kr/rd.asp?UID=2502579792
+
+<img src="https://github.com/chongjae/naver_land/blob/master/images/info.png?raw=true" title="Get APT Id" alt="Get APT Id" />
+
 
 distribution을 이용하여 apexchart를 그릴 수 있음.
 아래 예시는 각 날짜의 중앙값 데이터를 Y축에 찍어주는 그래프
 
+<img src="https://github.com/chongjae/naver_land/blob/master/images/chart.png?raw=true" title="Get APT Id" alt="Get APT Id" />
 type: custom:apexcharts-card
 graph_span: 21d
 header:
