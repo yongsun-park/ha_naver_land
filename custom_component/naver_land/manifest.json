@@ -3,8 +3,8 @@
     "name": "naver_land",
     "config_flow": true,
     "dependencies": [],
-    "documentation": "https://github.com/chongjae/naver_land_homeassistant",
-    "issue_tracker": "https://github.com/chongjae/naver_land_homeassistant/issues",
+    "documentation": "https://github.com/chongjae/naver_land",
+    "issue_tracker": "https://github.com/chongjae/naver_land/issues",
     "codeowners": ["@chongjae"],
     "requirements": ["requests"],
     "version": "1.0.0"
