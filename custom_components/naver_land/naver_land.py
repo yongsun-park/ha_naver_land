@@ -1,4 +1,5 @@
 import aiohttp
+import asyncio
 import requests
 
 class Article:
@@ -23,10 +24,12 @@ class Article:
                 f'CP Name: {self.cpName}, URL: {self.cpPcArticleUrl}')
 
 class NaverLandApi:
-    def __init__(self, apt_id, area):
+    def __init__(self, apt_id, area, exclude_low_floors=False, low_floor_limit=5):
         self.apt_name = None
         self.apt_id = apt_id
         self.area = area
+        self.exclude_low_floors = exclude_low_floors
+        self.low_floor_limit = low_floor_limit
         self.cookies = {
             'NNB': 'P5NZPDJIFBBWM',
             'ASID': '7db0cd8a0000018fbdd04b850000005d',
@@ -101,9 +104,29 @@ class NaverLandApi:
         except Exception as ex:
             raise ex
 
+    def is_valid_floor(self, floor_info):
+        """
+        층수 필터링 로직.
+        :param floor_info: "층수/전체층수" 형식의 문자열
+        :return: 필터링 여부 (True/False)
+        """
+        if not self.exclude_low_floors:
+            return True  # 필터링하지 않음
+
+        try:
+            floor, total_floors = floor_info.split("/")
+            return int(floor) > self.low_floor_limit  # 기준 층수 초과만 포함
+        except ValueError:
+            return False  # 잘못된 형식의 데이터는 제외
+
     async def get_all_articles(self):
+        """
+        모든 매물을 가져오고, 설정에 따라 저층을 제외하도록 필터링.
+        """
         all_articles = []
         page = 1
+
+        # 모든 데이터를 가져오기
         while True:
             articles = await self.fetch_articles(page)
             if len(articles) == 0:
@@ -127,4 +150,18 @@ class NaverLandApi:
                     print(f"Missing key {e} in article: {article}")
                     continue
             page += 1
-        return all_articles
+
+        # HA 설정값에 따라 필터링
+        return list(filter(lambda article: self.is_valid_floor(article.floorInfo), all_articles))
+
+    
+async def debug_articles():
+    api = NaverLandApi(apt_id="111515", area="11%3A9%3A10", exclude_low_floors=True, low_floor_limit=5)
+    articles = await api.get_all_articles()
+    
+    for article in articles:
+        # print(article)
+        print(f"Floor Info: {article.floorInfo}")  # 콘솔에 출력
+
+if __name__ == "__main__":
+    asyncio.run(debug_articles())
