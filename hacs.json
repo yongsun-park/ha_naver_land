@@ -1,0 +1,6 @@
+{
+    "name": "네이버부동산시세",
+    "country": "KR",
+    "domains": ["sensor"],
+    "render_readme": true
+  }
