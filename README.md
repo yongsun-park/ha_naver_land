@@ -24,6 +24,8 @@ Chrome에서 위 사이트 진입 후, 원하는 아파트 선택 후, 거래방
 개발자모드 On시킨 후, 네트워크 탭 -> Fetch/XHR 탭으로 이동
 매물 드래그해서 나오는 URL확인
 <img src="https://github.com/chongjae/naver_land/blob/master/images/get_id.png?raw=true" title="Get APT Id" alt="Get APT Id" />
+
+
 복사 하면 아래와 같은 URL이 나옴
 curl 'https://new.land.naver.com/api/articles/complex/111515?realEstateType=APT%3AABYG%3AJGC%3APRE&tradeType=&tag=%3A%3A%3A%3A%3A%3A%3A%3A&rentPriceMin=0&rentPriceMax=900000000&priceMin=0&priceMax=900000000&areaMin=0&areaMax=900000000&oldBuildYears&recentlyBuildYears&minHouseHoldCount&maxHouseHoldCount&showArticle=false&sameAddressGroup=false&minMaintenanceCost&maxMaintenanceCost&priceType=RETAIL&directions=&page=2&complexNo=111515&buildingNos=&areaNos=7&type=list&order=rank' \
 
@@ -68,6 +70,8 @@ distribution을 이용하여 apexchart를 그릴 수 있음.
 아래 예시는 각 날짜의 중앙값 데이터를 Y축에 찍어주는 그래프
 
 <img src="https://github.com/chongjae/naver_land/blob/master/images/chart.png?raw=true" title="Get APT Id" alt="Get APT Id" />
+
+
 type: custom:apexcharts-card
 graph_span: 21d
 header:
