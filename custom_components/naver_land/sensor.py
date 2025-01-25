@@ -115,9 +115,11 @@ class NaverLandPriceDistributionSensor(NaverLandSensorBase):
         if articles:
             distribution = {}
             for article in articles:
-                price = float(article.dealOrWarrantPrc.replace(",", ""))
-                distribution.setdefault(price, 0)
-                distribution[price] += 1
+                # Convert price string to float
+                price = convert_price_to_float(article.dealOrWarrantPrc)
+                if price > 0:  # Ignore invalid or zero values
+                    distribution.setdefault(price, 0)
+                    distribution[price] += 1
 
             self._distribution = distribution
             self._value = len(distribution)
@@ -126,6 +128,7 @@ class NaverLandPriceDistributionSensor(NaverLandSensorBase):
     def extra_state_attributes(self):
         """Return the price distribution as additional attributes."""
         return {"distribution": self._distribution}
+
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
