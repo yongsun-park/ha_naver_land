@@ -3,6 +3,24 @@ from .naver_land import NaverLandApi
 from .const import DOMAIN, CONF_EXCLUDE_LOW_FLOORS, CONF_LOW_FLOOR_LIMIT
 import hashlib
 
+def convert_price_to_float(price_str):
+    """Convert Korean currency format to float."""
+    try:
+        # "13억 9500" -> 13.9500
+        price_str = price_str.replace(",", "").strip()
+        if "억" in price_str:
+            parts = price_str.split("억")
+            # 앞부분: 억 단위, 뒷부분: 천 단위
+            billions = float(parts[0]) if parts[0] else 0
+            ten_thousands = float(parts[1]) / 10000 if len(parts) > 1 and parts[1] else 0
+            return billions + ten_thousands
+        else:
+            # 억 단위가 없는 경우 그대로 반환
+            return float(price_str) / 10000
+    except ValueError:
+        # 변환 실패 시 0 반환
+        return 0.0
+
 class NaverLandSensorBase(Entity):
     """Base class for NaverLand sensors."""
     def __init__(self, data, options, sensor_type):
@@ -62,8 +80,8 @@ class NaverLandMaxPriceSensor(NaverLandSensorBase):
 
         articles = await self.api.get_all_articles()
         if articles:
-            max_price_article = max(articles, key=lambda x: float(x.dealOrWarrantPrc.replace(",", "")))
-            self._value = float(max_price_article.dealOrWarrantPrc.replace(",", ""))
+            max_price_article = max(articles, key=lambda x: convert_price_to_float(x.dealOrWarrantPrc))
+            self._value = convert_price_to_float(max_price_article.dealOrWarrantPrc)
             self._data = max_price_article.__dict__
 
 
@@ -80,8 +98,8 @@ class NaverLandMinPriceSensor(NaverLandSensorBase):
 
         articles = await self.api.get_all_articles()
         if articles:
-            min_price_article = min(articles, key=lambda x: float(x.dealOrWarrantPrc.replace(",", "")))
-            self._value = float(min_price_article.dealOrWarrantPrc.replace(",", ""))
+            min_price_article = min(articles, key=lambda x: convert_price_to_float(x.dealOrWarrantPrc))
+            self._value = convert_price_to_float(min_price_article.dealOrWarrantPrc)
             self._data = min_price_article.__dict__
 
 
