@@ -2,6 +2,12 @@ from homeassistant.helpers.entity import Entity
 from .naver_land import NaverLandApi
 from .const import DOMAIN, CONF_EXCLUDE_LOW_FLOORS, CONF_LOW_FLOOR_LIMIT
 import hashlib
+import datetime
+import logging
+
+_LOGGER = logging.getLogger(__name__)
+
+SCAN_INTERVAL = datetime.timedelta(minutes=60)
 
 def convert_price_to_float(price_str):
     try:
