@@ -4,21 +4,17 @@ from .const import DOMAIN, CONF_EXCLUDE_LOW_FLOORS, CONF_LOW_FLOOR_LIMIT
 import hashlib
 
 def convert_price_to_float(price_str):
-    """Convert Korean currency format to float."""
     try:
-        # "13억 9500" -> 13.9500
-        price_str = price_str.replace(",", "").strip()
-        if "억" in price_str:
-            parts = price_str.split("억")
-            # 앞부분: 억 단위, 뒷부분: 천 단위
-            billions = float(parts[0]) if parts[0] else 0
-            ten_thousands = float(parts[1]) / 10000 if len(parts) > 1 and parts[1] else 0
-            return billions + ten_thousands
+        # Remove commas and split the string by '억'
+        parts = price_str.replace(',', '').split('억')
+        if len(parts) == 2:
+            # Convert the parts to float and calculate the final value
+            return float(parts[0]) + (float(parts[1]) / 10000 if parts[1] else 0)
+        elif len(parts) == 1:
+            return float(parts[0]) / 10000
         else:
-            # 억 단위가 없는 경우 그대로 반환
-            return float(price_str) / 10000
+            return 0.0
     except ValueError:
-        # 변환 실패 시 0 반환
         return 0.0
 
 class NaverLandSensorBase(Entity):
