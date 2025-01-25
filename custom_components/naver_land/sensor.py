@@ -44,27 +44,31 @@ class NaverLandSensorBase(Entity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
         return self._name
 
     @property
     def unique_id(self):
-        """Return the unique ID of the sensor."""
         return self._unique_id
 
     @property
     def state(self):
-        """Return the state of the sensor."""
         return self._value
 
     @property
     def extra_state_attributes(self):
-        """Return additional attributes of the sensor."""
         return self._data
     
     @property
     def state_class(self):
         return "measurement"
+    
+    @property
+    def device_class(self):
+        return "monetary"
+
+    @property
+    def unit_of_measurement(self):
+        return "억 원"
 
 
 class NaverLandMaxPriceSensor(NaverLandSensorBase):
