@@ -1,48 +1,22 @@
-import asyncio
-import logging
 from homeassistant.helpers.entity import Entity
 from .naver_land import NaverLandApi
 from .const import DOMAIN, CONF_EXCLUDE_LOW_FLOORS, CONF_LOW_FLOOR_LIMIT
-
-_LOGGER = logging.getLogger(__name__)
-
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up the NaverLand sensors from a config entry."""
-    data = config_entry.data
-    options = config_entry.options
-
-    async_add_entities([
-        NaverLandMaxPriceSensor(data, options),
-        NaverLandMinPriceSensor(data, options),
-        NaverLandPriceDistributionSensor(data, options),
-    ])
-
-
-def convert_price_to_float(price_str):
-    """Convert a price string to a float."""
-    try:
-        # Remove commas and split the string by '억'
-        parts = price_str.replace(',', '').split('억')
-        if len(parts) == 2:
-            return float(parts[0]) + (float(parts[1]) / 10000 if parts[1] else 0)
-        elif len(parts) == 1:
-            return float(parts[0]) / 10000
-        else:
-            return 0.0
-    except ValueError:
-        return 0.0
-
+import hashlib
 
 class NaverLandSensorBase(Entity):
     """Base class for NaverLand sensors."""
-    def __init__(self, data, options):
+    def __init__(self, data, options, sensor_type):
         self.apt_id = data["username"]
         self.area = data["variables"]
         self.exclude_low_floors = options.get(CONF_EXCLUDE_LOW_FLOORS, False)
         self.low_floor_limit = options.get(CONF_LOW_FLOOR_LIMIT, 5)
+        self.sensor_type = sensor_type
         self.api = None
         self._value = None
         self._data = None
+        self._name = f"{self.apt_id}-{self.sensor_type}"
+        # Generate a unique ID based on apt_id and sensor type
+        self._unique_id = hashlib.md5(f"{self.apt_id}-{self.sensor_type}".encode()).hexdigest()
 
     async def async_added_to_hass(self):
         """Initialize the API when the entity is added to Home Assistant."""
@@ -53,6 +27,16 @@ class NaverLandSensorBase(Entity):
             low_floor_limit=self.low_floor_limit,
         )
         await self.async_update()
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def unique_id(self):
+        """Return the unique ID of the sensor."""
+        return self._unique_id
 
     @property
     def state(self):
@@ -69,8 +53,7 @@ class NaverLandMaxPriceSensor(NaverLandSensorBase):
     """Sensor to get the maximum price from NaverLand."""
 
     def __init__(self, data, options):
-        super().__init__(data, options)
-        self._name = f"{self.apt_id}-max-price"
+        super().__init__(data, options, sensor_type="max-price")
 
     async def async_update(self):
         """Fetch the maximum price and update the state."""
@@ -79,22 +62,16 @@ class NaverLandMaxPriceSensor(NaverLandSensorBase):
 
         articles = await self.api.get_all_articles()
         if articles:
-            max_price_article = max(articles, key=lambda x: convert_price_to_float(x.dealOrWarrantPrc))
-            self._value = convert_price_to_float(max_price_article.dealOrWarrantPrc)
+            max_price_article = max(articles, key=lambda x: float(x.dealOrWarrantPrc.replace(",", "")))
+            self._value = float(max_price_article.dealOrWarrantPrc.replace(",", ""))
             self._data = max_price_article.__dict__
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
 
 
 class NaverLandMinPriceSensor(NaverLandSensorBase):
     """Sensor to get the minimum price from NaverLand."""
 
     def __init__(self, data, options):
-        super().__init__(data, options)
-        self._name = f"{self.apt_id}-min-price"
+        super().__init__(data, options, sensor_type="min-price")
 
     async def async_update(self):
         """Fetch the minimum price and update the state."""
@@ -103,22 +80,16 @@ class NaverLandMinPriceSensor(NaverLandSensorBase):
 
         articles = await self.api.get_all_articles()
         if articles:
-            min_price_article = min(articles, key=lambda x: convert_price_to_float(x.dealOrWarrantPrc))
-            self._value = convert_price_to_float(min_price_article.dealOrWarrantPrc)
+            min_price_article = min(articles, key=lambda x: float(x.dealOrWarrantPrc.replace(",", "")))
+            self._value = float(min_price_article.dealOrWarrantPrc.replace(",", ""))
             self._data = min_price_article.__dict__
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
 
 
 class NaverLandPriceDistributionSensor(NaverLandSensorBase):
     """Sensor to get the price distribution from NaverLand."""
 
     def __init__(self, data, options):
-        super().__init__(data, options)
-        self._name = f"{self.apt_id}-price-distribution"
+        super().__init__(data, options, sensor_type="price-distribution")
         self._distribution = {}
 
     async def async_update(self):
@@ -130,7 +101,7 @@ class NaverLandPriceDistributionSensor(NaverLandSensorBase):
         if articles:
             distribution = {}
             for article in articles:
-                price = convert_price_to_float(article.dealOrWarrantPrc)
+                price = float(article.dealOrWarrantPrc.replace(",", ""))
                 distribution.setdefault(price, 0)
                 distribution[price] += 1
 
@@ -142,7 +113,14 @@ class NaverLandPriceDistributionSensor(NaverLandSensorBase):
         """Return the price distribution as additional attributes."""
         return {"distribution": self._distribution}
 
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
+
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up the NaverLand sensors from a config entry."""
+    data = config_entry.data
+    options = config_entry.options
+
+    async_add_entities([
+        NaverLandMaxPriceSensor(data, options),
+        NaverLandMinPriceSensor(data, options),
+        NaverLandPriceDistributionSensor(data, options),
+    ])
