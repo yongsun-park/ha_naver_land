@@ -61,6 +61,10 @@ class NaverLandSensorBase(Entity):
     def extra_state_attributes(self):
         """Return additional attributes of the sensor."""
         return self._data
+    
+    @property
+    def state_class(self):
+        return "measurement"
 
 
 class NaverLandMaxPriceSensor(NaverLandSensorBase):
