@@ -20,10 +20,10 @@ SCAN_INTERVAL = datetime.timedelta(minutes=60)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform."""
-    naver_land_api = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities([NaverLandMaxPrice(naver_land_api.apt_id, naver_land_api.area)], False)
-    async_add_entities([NaverLandMinPrice(naver_land_api.apt_id, naver_land_api.area)], False)
-    async_add_entities([NaverLandPriceDistribution(naver_land_api.apt_id, naver_land_api.area)], False)
+    config_data = hass.data[DOMAIN][config_entry.entry_id]
+    async_add_entities([NaverLandMaxPrice(config_data)], False)
+    async_add_entities([NaverLandMinPrice(config_data)], False)
+    async_add_entities([NaverLandPriceDistribution(config_data)], False)
 
 
 def convert_price_to_float(price_str):
@@ -42,10 +42,15 @@ def convert_price_to_float(price_str):
 
 
 class NaverLandMaxPrice(Entity):
-    def __init__(self, apt_id, area):
-        self.api = NaverLandApi(apt_id, area)
-        self._name = f"{apt_id}-max-price"
-        self.device_id = hashlib.md5(f"{apt_id}-max".encode("UTF-8")).hexdigest()
+    def __init__(self, config_data):
+        self.api = NaverLandApi(
+            apt_id=config_data["apt_id"],
+            area=config_data["area"],
+            exclude_low_floors=config_data.get("exclude_low_floors", False),
+            low_floor_limit=config_data.get("low_floor_limit", 5)
+        )
+        self._name = f"{self.api.apt_id}-max-price"
+        self.device_id = hashlib.md5(f"{self.api.apt_id}-max".encode("UTF-8")).hexdigest()
         self._data = None
         self._value = None
         asyncio.create_task(self.async_update())
@@ -92,10 +97,17 @@ class NaverLandMaxPrice(Entity):
 
 
 class NaverLandMinPrice(Entity):
-    def __init__(self, apt_id, area):
-        self.api = NaverLandApi(apt_id, area)
-        self._name = f"{apt_id}-min-price"
-        self.device_id = hashlib.md5(f"{apt_id}-min".encode("UTF-8")).hexdigest()
+    def __init__(self, config_data):
+        # NaverLandApi 초기화
+        self.api = NaverLandApi(
+            apt_id=config_data["apt_id"],
+            area=config_data["area"],
+            exclude_low_floors=config_data.get("exclude_low_floors", False),
+            low_floor_limit=config_data.get("low_floor_limit", 5)
+        )
+        # 센서 기본 정보 설정
+        self._name = f"{self.api.apt_id}-min-price"
+        self.device_id = hashlib.md5(f"{self.api.apt_id}-min".encode("UTF-8")).hexdigest()
         self._data = None
         self._value = None
         asyncio.create_task(self.async_update())
@@ -142,10 +154,17 @@ class NaverLandMinPrice(Entity):
 
 
 class NaverLandPriceDistribution(Entity):
-    def __init__(self, apt_id, area):
-        self.api = NaverLandApi(apt_id, area)
-        self._name = f"{apt_id}-price-distribution"
-        self.device_id = hashlib.md5(f"{apt_id}-price-dist".encode("UTF-8")).hexdigest()
+    def __init__(self, config_data):
+        # NaverLandApi 초기화
+        self.api = NaverLandApi(
+            apt_id=config_data["apt_id"],
+            area=config_data["area"],
+            exclude_low_floors=config_data.get("exclude_low_floors", False),
+            low_floor_limit=config_data.get("low_floor_limit", 5)
+        )
+        # 센서 기본 정보 설정
+        self._name = f"{self.api.apt_id}-price-distribution"
+        self.device_id = hashlib.md5(f"{self.api.apt_id}-price-dist".encode("UTF-8")).hexdigest()
         self._data = defaultdict(list)
         self._value = None
         asyncio.create_task(self.async_update())
