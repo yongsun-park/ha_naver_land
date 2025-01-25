@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from homeassistant.helpers.entity import Entity
 from .naver_land import NaverLandApi
@@ -6,162 +7,142 @@ from .const import DOMAIN, CONF_EXCLUDE_LOW_FLOORS, CONF_LOW_FLOOR_LIMIT
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up the Naver Land sensors from a config entry."""
-    # config_entry에서 필요한 설정 값 추출
-    apt_id = config_entry.data["username"]
-    area = config_entry.data["variables"]
-    exclude_low_floors = config_entry.options.get(CONF_EXCLUDE_LOW_FLOORS, False)
-    low_floor_limit = config_entry.options.get(CONF_LOW_FLOOR_LIMIT, 5)
+    """Set up the NaverLand sensors from a config entry."""
+    data = config_entry.data
+    options = config_entry.options
 
-    # 센서 엔티티 추가
     async_add_entities([
-        NaverLandMaxPriceSensor(apt_id, area, exclude_low_floors, low_floor_limit),
-        NaverLandMinPriceSensor(apt_id, area, exclude_low_floors, low_floor_limit),
-        NaverLandPriceDistributionSensor(apt_id, area, exclude_low_floors, low_floor_limit),
-    ], False)
+        NaverLandMaxPriceSensor(data, options),
+        NaverLandMinPriceSensor(data, options),
+        NaverLandPriceDistributionSensor(data, options),
+    ])
 
 
 def convert_price_to_float(price_str):
-    """Convert price string (e.g., '5억 3000' or '2억') to float."""
+    """Convert a price string to a float."""
     try:
+        # Remove commas and split the string by '억'
         parts = price_str.replace(',', '').split('억')
         if len(parts) == 2:
             return float(parts[0]) + (float(parts[1]) / 10000 if parts[1] else 0)
         elif len(parts) == 1:
             return float(parts[0]) / 10000
-        return 0.0
+        else:
+            return 0.0
     except ValueError:
         return 0.0
 
 
-class NaverLandMaxPriceSensor(Entity):
-    """Sensor for the maximum price of a property."""
-
-    def __init__(self, apt_id, area, exclude_low_floors=False, low_floor_limit=5):
-        self.api = NaverLandApi(
-            apt_id=apt_id,
-            area=area,
-            exclude_low_floors=exclude_low_floors,
-            low_floor_limit=low_floor_limit,
-        )
-        self._name = f"{apt_id}-max-price"
-        self._data = None
+class NaverLandSensorBase(Entity):
+    """Base class for NaverLand sensors."""
+    def __init__(self, data, options):
+        self.apt_id = data["username"]
+        self.area = data["variables"]
+        self.exclude_low_floors = options.get(CONF_EXCLUDE_LOW_FLOORS, False)
+        self.low_floor_limit = options.get(CONF_LOW_FLOOR_LIMIT, 5)
+        self.api = None
         self._value = None
+        self._data = None
 
     async def async_added_to_hass(self):
-        """Initialize the sensor when added to Home Assistant."""
+        """Initialize the API when the entity is added to Home Assistant."""
+        self.api = NaverLandApi(
+            apt_id=self.apt_id,
+            area=self.area,
+            exclude_low_floors=self.exclude_low_floors,
+            low_floor_limit=self.low_floor_limit,
+        )
         await self.async_update()
 
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._value
+
+    @property
+    def extra_state_attributes(self):
+        """Return additional attributes of the sensor."""
+        return self._data
+
+
+class NaverLandMaxPriceSensor(NaverLandSensorBase):
+    """Sensor to get the maximum price from NaverLand."""
+
+    def __init__(self, data, options):
+        super().__init__(data, options)
+        self._name = f"{self.apt_id}-max-price"
+
     async def async_update(self):
-        """Fetch data and update state."""
+        """Fetch the maximum price and update the state."""
+        if not self.api:
+            return
+
         articles = await self.api.get_all_articles()
         if articles:
             max_price_article = max(articles, key=lambda x: convert_price_to_float(x.dealOrWarrantPrc))
-            self._data = max_price_article.__dict__
             self._value = convert_price_to_float(max_price_article.dealOrWarrantPrc)
+            self._data = max_price_article.__dict__
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return self._name
 
-    @property
-    def state(self):
-        """Return the current state of the sensor."""
-        return self._value
 
-    @property
-    def extra_state_attributes(self):
-        """Return the additional attributes of the sensor."""
-        return self._data
+class NaverLandMinPriceSensor(NaverLandSensorBase):
+    """Sensor to get the minimum price from NaverLand."""
 
-
-class NaverLandMinPriceSensor(Entity):
-    """Sensor for the minimum price of a property."""
-
-    def __init__(self, apt_id, area, exclude_low_floors=False, low_floor_limit=5):
-        self.api = NaverLandApi(
-            apt_id=apt_id,
-            area=area,
-            exclude_low_floors=exclude_low_floors,
-            low_floor_limit=low_floor_limit,
-        )
-        self._name = f"{apt_id}-min-price"
-        self._data = None
-        self._value = None
-
-    async def async_added_to_hass(self):
-        """Initialize the sensor when added to Home Assistant."""
-        await self.async_update()
+    def __init__(self, data, options):
+        super().__init__(data, options)
+        self._name = f"{self.apt_id}-min-price"
 
     async def async_update(self):
-        """Fetch data and update state."""
+        """Fetch the minimum price and update the state."""
+        if not self.api:
+            return
+
         articles = await self.api.get_all_articles()
         if articles:
             min_price_article = min(articles, key=lambda x: convert_price_to_float(x.dealOrWarrantPrc))
-            self._data = min_price_article.__dict__
             self._value = convert_price_to_float(min_price_article.dealOrWarrantPrc)
+            self._data = min_price_article.__dict__
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return self._name
 
-    @property
-    def state(self):
-        """Return the current state of the sensor."""
-        return self._value
 
-    @property
-    def extra_state_attributes(self):
-        """Return the additional attributes of the sensor."""
-        return self._data
+class NaverLandPriceDistributionSensor(NaverLandSensorBase):
+    """Sensor to get the price distribution from NaverLand."""
 
-
-class NaverLandPriceDistributionSensor(Entity):
-    """Sensor for the price distribution of properties."""
-
-    def __init__(self, apt_id, area, exclude_low_floors=False, low_floor_limit=5):
-        self.api = NaverLandApi(
-            apt_id=apt_id,
-            area=area,
-            exclude_low_floors=exclude_low_floors,
-            low_floor_limit=low_floor_limit,
-        )
-        self._name = f"{apt_id}-price-distribution"
-        self._data = {}
-        self._value = None
-
-    async def async_added_to_hass(self):
-        """Initialize the sensor when added to Home Assistant."""
-        await self.async_update()
+    def __init__(self, data, options):
+        super().__init__(data, options)
+        self._name = f"{self.apt_id}-price-distribution"
+        self._distribution = {}
 
     async def async_update(self):
-        """Fetch data and update state."""
+        """Fetch price distribution and update the state."""
+        if not self.api:
+            return
+
         articles = await self.api.get_all_articles()
         if articles:
-            price_distribution = {}
+            distribution = {}
             for article in articles:
                 price = convert_price_to_float(article.dealOrWarrantPrc)
-                confirm_date = article.articleConfirmYmd
-                if confirm_date not in price_distribution:
-                    price_distribution[confirm_date] = []
-                price_distribution[confirm_date].append(price)
+                distribution.setdefault(price, 0)
+                distribution[price] += 1
 
-            self._data = price_distribution
-            self._value = sum(len(prices) for prices in price_distribution.values())
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def state(self):
-        """Return the total number of price entries."""
-        return self._value
+            self._distribution = distribution
+            self._value = len(distribution)
 
     @property
     def extra_state_attributes(self):
         """Return the price distribution as additional attributes."""
-        return self._data
+        return {"distribution": self._distribution}
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
